@@ -8,43 +8,101 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
         with:
-          python-version: '3.10'
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Generate Uncompressed Heavy APK (30+ MB)
+      - name: Create Clean Android Project Structure
         run: |
-          python3 -c '
-          import zipfile, os
+          mkdir -p app/src/main/java/com/godhand/app
+          mkdir -p app/src/main/res/values
 
-          os.makedirs("app/build/outputs/apk/debug", exist_ok=True)
-          apk_path = "app/build/outputs/apk/debug/app-debug.apk"
-
-          manifest = """<?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.godhand.app" android:versionCode="1" android:versionName="1.0">
-              <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="33" />
-              <application android:label="God Hand Port" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
-                  <activity android:name="com.godhand.app.MainActivity" android:exported="true">
+          # 1. AndroidManifest.xml limpo
+          cat << 'ENDXML' > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.godhand.app"
+              android:versionCode="1"
+              android:versionName="1.0">
+              <application
+                  android:label="God Hand Port"
+                  android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
                   </activity>
               </application>
-          </manifest>"""
+          </manifest>
+          ENDXML
 
-          print("A gerar o motor nativo pesado com dados reais...")
-          # Usar ZIP_STORED (sem compressão) e dados aleatórios para manter os 30+ MB intocados
-          with zipfile.ZipFile(apk_path, "w", zipfile.ZIP_STORED) as zipf:
-              zipf.writestr("AndroidManifest.xml", manifest.encode("utf-8"))
-              
-              # Gerar cerca de 32 MB de dados binários reais para o motor nativo do jogo
-              heavy_binary = os.urandom(32 * 1024 * 1024) 
-              zipf.writestr("lib/arm64-v8a/libgodhand.so", heavy_binary)
+          # 2. MainActivity.java com interface inicial
+          cat << 'ENDJAVA' > app/src/main/java/com/godhand/app/MainActivity.java
+          package com.godhand.app;
 
-          print("APK pesado gerado com sucesso!")
-          '
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.widget.TextView;
+          import android.graphics.Color;
+          import android.view.Gravity;
+
+          public class MainActivity extends Activity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  TextView tv = new TextView(this);
+                  tv.setText("God Hand Android - A carregar dados...");
+                  tv.setTextColor(Color.WHITE);
+                  tv.setTextSize(18);
+                  tv.setGravity(Gravity.CENTER);
+                  tv.setBackgroundColor(Color.BLACK);
+                  setContentView(tv);
+              }
+          }
+          ENDJAVA
+
+          # 3. Configurações do Gradle
+          cat << 'ENDGRADLE' > build.gradle
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          ENDGRADLE
+
+          cat << 'ENDSETTINGS' > settings.gradle
+          include ':app'
+          ENDSETTINGS
+
+          cat << 'ENDAPPGRADLE' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.godhand.app'
+              compileSdk 33
+              defaultConfig {
+                  applicationId 'com.godhand.app'
+                  minSdk 21
+                  targetSdk 33
+                  versionCode 1
+                  versionName "1.0"
+              }
+          }
+          ENDAPPGRADLE
+
+          cat << 'ENDPROPS' > local.properties
+          sdk.dir=$ANDROID_SDK_ROOT
+          ENDPROPS
+
+          # Gerar wrapper e compilar
+          gradle wrapper
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
