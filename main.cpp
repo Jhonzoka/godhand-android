@@ -1,2 +1,7 @@
-#include <SDL3/SDL.h>
-int main(int argc, char* argv[]) { return 0; }
+#include <iostream>
+
+int main() {
+    std::cout << "God Hand Android Port Running!" << std::endl;
+    return 0;
+}
+
