@@ -14,21 +14,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
-        id: setup-ndk
-        with:
-          ndk-version: r25c
+      - name: Setup Android SDK & NDK
+        uses: android-actions/setup-android@v2
 
-      - name: Compile Native Executable
+      - name: Build APK with Gradle
         run: |
-          mkdir build
-          cd build
-          cmake -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-21 ..
-          make
+          chmod +x gradlew || true
+          gradle build || ./gradlew assembleDebug
 
-      - name: Upload Build Artifacts
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GodHand-Android-Binary
-          path: build/
+          name: GodHand-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
